@@ -1,0 +1,124 @@
+#include <stdio.h> 
+#include <sqlca.h> 
+#include <string.h>
+#include <usrinc/atmi.h>
+#include <usrinc/fbuf.h>
+#include "../../fdl/mem_fdl.h"
+#define USERPASS "tibero/tmax" 
+
+
+
+
+
+void CREATETABLE(TPSVCINFO *msg)
+{
+    EXEC SQL BEGIN DECLARE SECTION;                                
+        VARCHAR userpass[20] = {strlen(USERPASS), USERPASS}; 
+    EXEC SQL END DECLARE SECTION; 
+
+    char *sendbuf;
+
+    EXEC SQL CONNECT :userpass;
+
+    if ((sendbuf = tpalloc("STRING", NULL, 0)) == NULL)
+    {
+        fprintf(stderr,"Error allocation buffer\n");
+        printf("%s\n",tpstrerror(tperrno));
+        strcpy(msg->data,"Error allocation buffer");
+        tpreturn(TPFAIL, 0, msg->data, 0, TPNOFLAGS);
+    }
+    
+    EXEC SQL CREATE TABLE MEMBER(
+        id VARCHAR2(50) NOT NULL,
+        name VARCHAR2(50) NOT NULL,
+        dept VARCHAR2(50)
+    );
+
+    if(sqlca.sqlcode){
+        printf("%s\n",sqlca.sqlerrm.sqlerrmc);
+        strcpy(sendbuf,sqlca.sqlerrm.sqlerrmc);
+        tpreturn(TPFAIL, 0, sendbuf, 0, TPNOFLAGS);
+    }
+
+    EXEC SQL COMMIT WORK RELEASE;
+
+    if(sqlca.sqlcode){
+        printf("%s\n",sqlca.sqlerrm.sqlerrmc);
+        strcpy(sendbuf,sqlca.sqlerrm.sqlerrmc);
+        tpreturn(TPFAIL, 0, sendbuf, 0, TPNOFLAGS);
+    }
+
+    strcpy(sendbuf,"Table is created.");
+
+    tpreturn(TPSUCCESS, 0, sendbuf, 0, TPNOFLAGS);
+}
+
+
+
+void ADDMEMBER(TPSVCINFO *msg)
+{ 
+    char *sendbuf;
+    
+
+    EXEC SQL BEGIN DECLARE SECTION;                                
+        VARCHAR userpass[20] = {strlen(USERPASS), USERPASS}; 
+        VARCHAR id[50]; 
+        VARCHAR name[50];
+        VARCHAR dept[50]; 
+    EXEC SQL END DECLARE SECTION; 
+
+
+
+    FBUF *data=(FBUF *)(msg->data);
+    fbget(data,ID,id.arr,0);
+    fbget(data,NAME,name.arr,0);
+    fbget(data,DEPT,dept.arr,0);
+
+
+    if ((sendbuf = tpalloc("STRING", NULL, 0)) == NULL)
+    {
+        fprintf(stderr,"Error allocation buffer\n");
+        printf("%s\n",tpstrerror(tperrno));
+        exit(1);
+    }
+
+
+    EXEC SQL CONNECT :userpass;
+
+    if(sqlca.sqlcode){
+        printf("%s\n",sqlca.sqlerrm.sqlerrmc);
+        strcpy(sendbuf,sqlca.sqlerrm.sqlerrmc);
+        tpreturn(TPFAIL, 0, sendbuf, 0, TPNOFLAGS);
+    }
+
+    EXEC SQL INSERT INTO MEMBER(
+        id,
+        name,
+        dept
+    ) values
+    (
+        :id.arr,
+        :name.arr,
+        :dept.arr
+    );
+
+    if(sqlca.sqlcode){
+        printf("%s\n",sqlca.sqlerrm.sqlerrmc);
+        strcpy(sendbuf,sqlca.sqlerrm.sqlerrmc);
+        tpreturn(TPFAIL, 0, sendbuf, 0, TPNOFLAGS);
+    }
+
+
+    EXEC SQL COMMIT WORK RELEASE;
+
+    if(sqlca.sqlcode){
+        printf("%s\n",sqlca.sqlerrm.sqlerrmc);
+        strcpy(sendbuf,sqlca.sqlerrm.sqlerrmc);
+        tpreturn(TPFAIL, 0, sendbuf, 0, TPNOFLAGS);
+    }
+
+    strcpy(sendbuf,"Member is added.");
+
+    tpreturn(TPSUCCESS, 0, sendbuf, 0, TPNOFLAGS);
+}
+
