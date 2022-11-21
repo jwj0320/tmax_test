@@ -1,4 +1,5 @@
 ##환경설정
+
 sample3.m을 {TMAXDIR}/config 에 넣고
 1. cfl -i sample3.m
 2. gst
